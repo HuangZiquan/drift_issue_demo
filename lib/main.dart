@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:drift/drift.dart';
 import 'package:drift/isolate.dart';
+import 'package:executor/executor.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_lorem/flutter_lorem.dart';
@@ -30,13 +33,17 @@ class _MyAppState extends State<MyApp> {
       home: Center(
         child: TextButton(
           onPressed: () async {
-            var num = List<int>.generate(1000, (i) => i);
-            await Future.forEach(num, (i) async {
-              await compute<Map, void>(syncRoomMessages, {
-                'driftIsolate': driftIsolate,
+            final executor = Executor(concurrency: Platform.numberOfProcessors);
+            for (var i in List<int>.generate(1000, (i) => i)) {
+              executor.scheduleTask(() async {
+                await compute<Map, void>(syncRoomMessages, {
+                  'driftIsolate': driftIsolate,
+                });
+                print(i);
               });
-              print(i);
-            });
+            }
+            await executor.join(withWaiting: true);
+            await executor.close();
           },
           child: const Text("RUN"),
         ),
